@@ -149,6 +149,61 @@ extern uint16_t indicateNoTarget;
 
 cplxf_t vsDataMeanBuf[80] = { 0 };
 
+float MmwDemo_computePhaseUnwrap(float phase, float phasePrev, float *diffPhaseCorrectionCum)
+{
+    float modFactorF;
+    float diffPhase;
+    float diffPhaseMod;
+    float diffPhaseCorrection;
+    float phaseOut;
+
+    // incremental phase variation
+    diffPhase = phase - phasePrev;
+
+    if (diffPhase > PI)
+        modFactorF = 1;
+    else if (diffPhase < -PI)
+        modFactorF = -1;
+    else
+        modFactorF = 0;
+
+    diffPhaseMod = diffPhase - modFactorF * 2 * PI;
+
+    // preserve variation sign for +pi vs. -pi
+    if ((diffPhaseMod == -PI) && (diffPhase > 0))
+        diffPhaseMod = PI;
+
+    // incremental phase correction
+    diffPhaseCorrection = diffPhaseMod - diffPhase;
+
+    // Ignore correction when incremental variation is smaller than cutoff
+    if (((diffPhaseCorrection < PI) && (diffPhaseCorrection > 0)) ||
+        ((diffPhaseCorrection > -PI) && (diffPhaseCorrection < 0)))
+        diffPhaseCorrection = 0;
+
+    // Find cumulative sum of deltas
+    *diffPhaseCorrectionCum = *diffPhaseCorrectionCum + diffPhaseCorrection;
+    phaseOut                = phase + *diffPhaseCorrectionCum;
+    return phaseOut;
+}
+
+
+float MmwDemo_computeMyDeviation(float *a, int n)
+{
+    if (a == NULL || n < 1)
+        return -1.0;
+    float sumX  = 0.0;
+    float sumX2 = 0.0;
+    int   i     = 0;
+    for (i = 0; i < n; i++)
+    {
+        sumX += a[i];
+        sumX2 += a[i] * a[i];
+    }
+    return sumX2 / n - (sumX / n) * (sumX / n);
+}
+
+
 void MmwDemo_computeVitalSignProcessing(cplxf_t *vsDataAngleFftOutBuf, uint16_t indicateNoTarget)
 {
 
@@ -638,7 +693,7 @@ void MmwDemo_computeVitalSignProcessing(cplxf_t *vsDataAngleFftOutBuf, uint16_t 
     return;
 }
 
-
+// MmwDemo_runPreProcess 2 funtion Appear2
 void MmwDemo_computeMagnitudeSquared(cplxf_t *inpBuff, float *magSqrdBuff, uint32_t numSamples)
 {
     uint32_t i;
@@ -649,23 +704,7 @@ void MmwDemo_computeMagnitudeSquared(cplxf_t *inpBuff, float *magSqrdBuff, uint3
     }
 }
 
-
-float MmwDemo_computeMyDeviation(float *a, int n)
-{
-    if (a == NULL || n < 1)
-        return -1.0;
-    float sumX  = 0.0;
-    float sumX2 = 0.0;
-    int   i     = 0;
-    for (i = 0; i < n; i++)
-    {
-        sumX += a[i];
-        sumX2 += a[i] * a[i];
-    }
-    return sumX2 / n - (sumX / n) * (sumX / n);
-}
-
-
+// MmwDemo_runPreProcess 1 funtion Appear1
 uint32_t MmwDemo_runCopyTranspose64b(uint64_t *src, uint64_t *dest, uint32_t size, int32_t offset, uint32_t stride, uint32_t pairs)
 {
     int32_t i, j, k;
@@ -684,8 +723,6 @@ uint32_t MmwDemo_runCopyTranspose64b(uint64_t *src, uint64_t *dest, uint32_t siz
 
 void MmwDemo_runPreProcess(cplxf_t *pDataIn, uint32_t vsDataCount)
 {
-
-
     cplxf_t *pDataIn_buf_CPLXF;
 
 
@@ -707,7 +744,7 @@ void MmwDemo_runPreProcess(cplxf_t *pDataIn, uint32_t vsDataCount)
     uint32_t rangeBinIdx;
 
     float    fftLogAbsPeakValue = 0;
-    int32_t  rad2D              = 2;
+    int32_t  rad2D              = 4;
  
     pDataIn_buf_CPLXF = (cplxf_t *)&pDataIn[0];
 
@@ -723,10 +760,6 @@ void MmwDemo_runPreProcess(cplxf_t *pDataIn, uint32_t vsDataCount)
 
     dataIdx = 0;
     dataSetIdx = 0;
-
-    rad2D = 4;
-
-    pDataIn_buf_CPLXF = (cplxf_t *)&pDataIn[0];
 
 
     for (dataMeanIdx = 0; dataMeanIdx < VS_NUM_RANGE_SEL_BIN * VS_NUM_VIRTUAL_CHANNEL; dataMeanIdx++)
@@ -992,46 +1025,7 @@ int MmwDemo_genTwiddle(float *w, int n)
     return k;
 }
 
-
-float MmwDemo_computePhaseUnwrap(float phase, float phasePrev, float *diffPhaseCorrectionCum)
-{
-    float modFactorF;
-    float diffPhase;
-    float diffPhaseMod;
-    float diffPhaseCorrection;
-    float phaseOut;
-
-    // incremental phase variation
-    diffPhase = phase - phasePrev;
-
-    if (diffPhase > PI)
-        modFactorF = 1;
-    else if (diffPhase < -PI)
-        modFactorF = -1;
-    else
-        modFactorF = 0;
-
-    diffPhaseMod = diffPhase - modFactorF * 2 * PI;
-
-    // preserve variation sign for +pi vs. -pi
-    if ((diffPhaseMod == -PI) && (diffPhase > 0))
-        diffPhaseMod = PI;
-
-    // incremental phase correction
-    diffPhaseCorrection = diffPhaseMod - diffPhase;
-
-    // Ignore correction when incremental variation is smaller than cutoff
-    if (((diffPhaseCorrection < PI) && (diffPhaseCorrection > 0)) ||
-        ((diffPhaseCorrection > -PI) && (diffPhaseCorrection < 0)))
-        diffPhaseCorrection = 0;
-
-    // Find cumulative sum of deltas
-    *diffPhaseCorrectionCum = *diffPhaseCorrectionCum + diffPhaseCorrection;
-    phaseOut                = phase + *diffPhaseCorrectionCum;
-    return phaseOut;
-}
-
-
+// into point
 uint32_t MmwDemo_runVitalSigns(uint32_t vsBaseAddr, uint16_t indicateNoTarget, uint32_t vsLoop, vsAntennaGeometry vitalSignsAntenna)
 {
     uint32_t rangeBinIdx;
