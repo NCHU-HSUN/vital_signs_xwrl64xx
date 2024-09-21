@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?ccsproject version="1.0"?>
+<projectOptions>
+	<ccsVariant value="0:Eclipse-based"/>
+	<ccsVersion value="12.8.0"/>
+	<deviceVariant value="Cortex M.IWRL6432"/>
+	<deviceFamily value="TMS470"/>
+	<deviceEndianness value="little"/>
+	<codegenToolVersion value="TICLANG_3.2.2.LTS"/>
+	<isElfFormat value="true"/>
+	<linkerCommandFile value="linker.cmd"/>
+	<rts value=""/>
+	<createSlaveProjects value=""/>
+	<ignoreDefaultDeviceSettings value="true"/>
+	<ignoreDefaultCCSSettings value="true"/>
+	<templateProperties value="id=vital_signs_xwrl64xx_appss.projectspec.vital_signs_xwrl64xx,products=sysconfig:1.20.0;MMWAVE-L-SDK:05.05.00.02;,target=ti.targets.arm.elf.M4F,platform=ti.platforms.cortexM:IWRL6432:false:200,buildProfile=release"/>
+	<origin value="C:\ti\radar_toolbox_2_20_00_05\source\ti\examples\Medical\IWRL6432_Vital_Signs\src\6432\vital_signs_xwrl64xx_appss.projectspec"/>
+	<filesToOpen value=""/>
+</projectOptions>
