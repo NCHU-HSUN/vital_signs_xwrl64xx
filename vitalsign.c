@@ -649,6 +649,7 @@ void MmwDemo_computeMagnitudeSquared(cplxf_t *inpBuff, float *magSqrdBuff, uint3
     }
 }
 
+
 float MmwDemo_computeMyDeviation(float *a, int n)
 {
     if (a == NULL || n < 1)
@@ -663,6 +664,7 @@ float MmwDemo_computeMyDeviation(float *a, int n)
     }
     return sumX2 / n - (sumX / n) * (sumX / n);
 }
+
 
 uint32_t MmwDemo_runCopyTranspose64b(uint64_t *src, uint64_t *dest, uint32_t size, int32_t offset, uint32_t stride, uint32_t pairs)
 {
@@ -1094,8 +1096,8 @@ uint32_t MmwDemo_runVitalSigns(uint32_t vsBaseAddr, uint16_t indicateNoTarget, u
 
         if (vsLoop == 0 && vsDataCount == 0)
         {
-            TwidStatus = MmwDemo_genTwiddle(angleFFTSpectrumTwiddle, VS_NUM_ANGLE_FFT);
-            TwidStatus = MmwDemo_genTwiddle(vitalSignsSpectrumTwiddle, PHASE_FFT_SIZE);
+            MmwDemo_genTwiddle(angleFFTSpectrumTwiddle, VS_NUM_ANGLE_FFT);
+            MmwDemo_genTwiddle(vitalSignsSpectrumTwiddle, PHASE_FFT_SIZE);
         }
 
         MmwDemo_runPreProcess((cplxf_t *)dataInInter, vsDataCount);
