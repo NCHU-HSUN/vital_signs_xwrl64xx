@@ -145,7 +145,8 @@ unsigned char brevFft[64] = {
 extern uint32_t vsLoop;
 extern uint32_t vsDataCount;
 extern uint16_t vsRangeBin;
-extern uint16_t indicateNoTarget;
+//maybe not used
+//extern uint16_t indicateNoTarget;
 
 cplxf_t vsDataMeanBuf[80] = { 0 };
 
@@ -1031,7 +1032,6 @@ uint32_t MmwDemo_runVitalSigns(uint32_t vsBaseAddr, uint16_t indicateNoTarget, u
     uint32_t rangeBinIdx;
     uint32_t dataIdx, antennaIdx;
     cplxf_t *dataInInter;
-    uint32_t TwidStatus;
 
     dataIdx = 0;
     //antennaIdx = VIRTUAL_ANTENNA_DATA_OFFSET;
