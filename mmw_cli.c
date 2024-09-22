@@ -2836,6 +2836,119 @@ int32_t CLI_MMWaveSensorStart (int32_t argc, char* argv[])
     return retVal;
 }
 
+int32_t CLI_MMWStart(void)
+{
+    #if(ENABLE_GPADC==1U)
+    int32_t statenable;
+    #endif
+    int32_t errCode = 0;
+    demoStartTime = PRCMSlowClkCtrGet();
+
+    #ifdef INA228
+    I2C_Handle  i2cHandle = gI2cHandle[CONFIG_I2C0];
+    #endif
+
+    #if (CLI_REMOVAL == 0)
+    if(gMmwMssMCB.adcDataSourceCfg.source == 0)
+    #endif
+    {
+        //CLI_getMMWaveExtensionOpenConfig (&gMmwMssMCB.mmwOpenCfg);
+        Mmwave_populateDefaultOpenCfg (&gMmwMssMCB.mmwOpenCfg);
+        errCode = MmwDemo_openSensor();
+        if(errCode != 0)
+        {
+            goto exit;
+        }
+        //CLI_getMMWaveExtensionConfig (&gMmwMssMCB.mmwCtrlCfg);
+        Mmwave_populateDefaultChirpControlCfg (&gMmwMssMCB.mmwCtrlCfg); /* regular frame config */
+        errCode = MmwDemo_configSensor();
+        if(errCode != 0)
+        {
+            goto exit;
+        }
+    }
+
+    gDpcTask = xTaskCreateStatic(mmwDemo_dpcTask, /* Pointer to the function that implements the task. */
+                                 "dpc_task",      /* Text name for the task.  This is to facilitate debugging only. */
+                                 DPC_TASK_STACK_SIZE,   /* Stack depth in units of StackType_t typically uint32_t on 32b CPUs */
+                                 NULL,                  /* We are not using the task parameter. */
+                                 DPC_TASK_PRI,          /* task priority, 0 is lowest priority, configMAX_PRIORITIES-1 is highest */
+                                 gDpcTaskStack,      /* pointer to stack base */
+                                 &gDpcTaskObj);         /* pointer to statically allocated task object memory */
+    configASSERT(gDpcTask != NULL);
+
+
+    gTlvTask = xTaskCreateStatic(mmwDemo_TransmitProcessedOutputTask, /* Pointer to the function that implements the task. */
+                                "tlv_task",      /* Text name for the task.  This is to facilitate debugging only. */
+                                TLV_TASK_STACK_SIZE,   /* Stack depth in units of StackType_t typically uint32_t on 32b CPUs */
+                                NULL,                  /* We are not using the task parameter. */
+                                TLV_TASK_PRI,          /* task priority, 0 is lowest priority, configMAX_PRIORITIES-1 is highest */
+                                gTlvTaskStack,      /* pointer to stack base */
+                                &gTlvTaskObj);         /* pointer to statically allocated task object memory */
+    configASSERT(gTlvTask != NULL);
+
+    #if (CLI_REMOVAL == 0)
+    if(gMmwMssMCB.adcDataSourceCfg.source == 0)
+    #else
+    /* Wait for DPC config to complete */
+    SemaphoreP_pend(&gMmwMssMCB.dpcCfgDoneSemHandle, SystemP_WAIT_FOREVER);
+    #endif
+    {
+        if (!gMmwMssMCB.oneTimeConfigDone)
+        {
+            /* Config INA sensors. */
+            #ifdef INA228
+                if(gMmwMssMCB.spiADCStream != 1)
+                {
+                    SensorConfig(i2cHandle);
+                }
+            #endif
+        }
+        
+        
+        errCode = MmwDemo_startSensor();
+        
+        #if (ENABLE_GPADC==1U)
+        // Enabling GPADC Pins 1 & 2
+        statenable=MMWave_enableGPADC(GPADCPIN1_ENABLE|GPADCPIN2_ENABLE);
+
+        if(statenable!=0)
+        {
+            CLI_write("\r\n GPADC Config Error : %d \r\n",statenable);
+        }
+        #endif
+
+        if(errCode != 0)
+        {
+            goto exit;
+        }
+    }
+    #if (CLI_REMOVAL == 0)
+    else
+    {
+        if (!gMmwMssMCB.oneTimeConfigDone)
+        {
+            gAdcFileTask = xTaskCreateStatic(mmwDemo_adcFileReadTask, /* Pointer to the function that implements the task. */
+                                     "adcFileRead_task",      /* Text name for the task.  This is to facilitate debugging only. */
+                                     ADC_FILEREAD_TASK_STACK_SIZE,   /* Stack depth in units of StackType_t typically uint32_t on 32b CPUs */
+                                     NULL,                  /* We are not using the task parameter. */
+                                     ADC_FILEREAD_TASK_PRI,          /* task priority, 0 is lowest priority, configMAX_PRIORITIES-1 is highest */
+                                     gAdcFileTaskStack,      /* pointer to stack base */
+                                     &gAdcFileTaskObj);         /* pointer to statically allocated task object memory */
+            configASSERT(gAdcFileTask != NULL);
+        }
+    }
+    #endif
+
+    if (!gMmwMssMCB.oneTimeConfigDone)
+    {
+        gMmwMssMCB.oneTimeConfigDone = 1;
+    }
+
+exit:
+    return errCode;
+}
+
 static int32_t CLI_MMWaveFactoryCalConfig (int32_t argc, char* argv[])
 {
     #if (CLI_REMOVAL == 0)
@@ -3460,119 +3573,6 @@ void CLI_init (uint8_t taskPriority)
         }
     }
     #endif
-}
-
-int32_t CLI_MMWStart(void)
-{
-    #if(ENABLE_GPADC==1U)
-    int32_t statenable;
-    #endif
-    int32_t errCode = 0;
-    demoStartTime = PRCMSlowClkCtrGet();
-
-    #ifdef INA228
-    I2C_Handle  i2cHandle = gI2cHandle[CONFIG_I2C0];
-    #endif
-
-    #if (CLI_REMOVAL == 0)
-    if(gMmwMssMCB.adcDataSourceCfg.source == 0)
-    #endif
-    {
-        //CLI_getMMWaveExtensionOpenConfig (&gMmwMssMCB.mmwOpenCfg);
-        Mmwave_populateDefaultOpenCfg (&gMmwMssMCB.mmwOpenCfg);
-        errCode = MmwDemo_openSensor();
-        if(errCode != 0)
-        {
-            goto exit;
-        }
-        //CLI_getMMWaveExtensionConfig (&gMmwMssMCB.mmwCtrlCfg);
-        Mmwave_populateDefaultChirpControlCfg (&gMmwMssMCB.mmwCtrlCfg); /* regular frame config */
-        errCode = MmwDemo_configSensor();
-        if(errCode != 0)
-        {
-            goto exit;
-        }
-    }
-
-    gDpcTask = xTaskCreateStatic(mmwDemo_dpcTask, /* Pointer to the function that implements the task. */
-                                 "dpc_task",      /* Text name for the task.  This is to facilitate debugging only. */
-                                 DPC_TASK_STACK_SIZE,   /* Stack depth in units of StackType_t typically uint32_t on 32b CPUs */
-                                 NULL,                  /* We are not using the task parameter. */
-                                 DPC_TASK_PRI,          /* task priority, 0 is lowest priority, configMAX_PRIORITIES-1 is highest */
-                                 gDpcTaskStack,      /* pointer to stack base */
-                                 &gDpcTaskObj);         /* pointer to statically allocated task object memory */
-    configASSERT(gDpcTask != NULL);
-
-
-    gTlvTask = xTaskCreateStatic(mmwDemo_TransmitProcessedOutputTask, /* Pointer to the function that implements the task. */
-                                "tlv_task",      /* Text name for the task.  This is to facilitate debugging only. */
-                                TLV_TASK_STACK_SIZE,   /* Stack depth in units of StackType_t typically uint32_t on 32b CPUs */
-                                NULL,                  /* We are not using the task parameter. */
-                                TLV_TASK_PRI,          /* task priority, 0 is lowest priority, configMAX_PRIORITIES-1 is highest */
-                                gTlvTaskStack,      /* pointer to stack base */
-                                &gTlvTaskObj);         /* pointer to statically allocated task object memory */
-    configASSERT(gTlvTask != NULL);
-
-    #if (CLI_REMOVAL == 0)
-    if(gMmwMssMCB.adcDataSourceCfg.source == 0)
-    #else
-    /* Wait for DPC config to complete */
-    SemaphoreP_pend(&gMmwMssMCB.dpcCfgDoneSemHandle, SystemP_WAIT_FOREVER);
-    #endif
-    {
-        if (!gMmwMssMCB.oneTimeConfigDone)
-        {
-            /* Config INA sensors. */
-            #ifdef INA228
-                if(gMmwMssMCB.spiADCStream != 1)
-                {
-                    SensorConfig(i2cHandle);
-                }
-            #endif
-        }
-        
-        
-        errCode = MmwDemo_startSensor();
-        
-        #if (ENABLE_GPADC==1U)
-        // Enabling GPADC Pins 1 & 2
-        statenable=MMWave_enableGPADC(GPADCPIN1_ENABLE|GPADCPIN2_ENABLE);
-
-        if(statenable!=0)
-        {
-            CLI_write("\r\n GPADC Config Error : %d \r\n",statenable);
-        }
-        #endif
-
-        if(errCode != 0)
-        {
-            goto exit;
-        }
-    }
-    #if (CLI_REMOVAL == 0)
-    else
-    {
-        if (!gMmwMssMCB.oneTimeConfigDone)
-        {
-            gAdcFileTask = xTaskCreateStatic(mmwDemo_adcFileReadTask, /* Pointer to the function that implements the task. */
-                                     "adcFileRead_task",      /* Text name for the task.  This is to facilitate debugging only. */
-                                     ADC_FILEREAD_TASK_STACK_SIZE,   /* Stack depth in units of StackType_t typically uint32_t on 32b CPUs */
-                                     NULL,                  /* We are not using the task parameter. */
-                                     ADC_FILEREAD_TASK_PRI,          /* task priority, 0 is lowest priority, configMAX_PRIORITIES-1 is highest */
-                                     gAdcFileTaskStack,      /* pointer to stack base */
-                                     &gAdcFileTaskObj);         /* pointer to statically allocated task object memory */
-            configASSERT(gAdcFileTask != NULL);
-        }
-    }
-    #endif
-
-    if (!gMmwMssMCB.oneTimeConfigDone)
-    {
-        gMmwMssMCB.oneTimeConfigDone = 1;
-    }
-
-exit:
-    return errCode;
 }
 
 #if (CLI_REMOVAL == 0)
