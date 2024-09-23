@@ -125,4 +125,6 @@ GEN_OPTS__QUOTED :=
 # Every subdirectory with source files must be described here
 SUBDIRS := \
 . \
+PC_Tool/Applications_Visualizer/Body_And_Chassis_Visualizer \
+PC_Tool/Applications_Visualizer/Industrial_Visualizer \
 
